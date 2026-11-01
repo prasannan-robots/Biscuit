@@ -1,38 +1,48 @@
 {% extends "base.html" %}
-{% block title %}Biscuit | Online attendance helper{% endblock %}
+{% block title %}Find who missed class{% endblock %}
+{% block steps %}{% with current = 1 %}{% include "_steps.html" %}{% endwith %}{% endblock %}
 {% block content %}
-<div style='max-width:auto;height:350px;text-align:center;align-items:center;background-color:white;font-family:monospace;'>
-    <h2 style='padding-top:60px;color: #4d4d4d;' class='arrow1'>An online attendance helper for bigbluebutton</h2>
-    <h5 style='padding-top:30px;color: #4d4d4d;' class='arrow2'>Helps you to find the absentees from the list</h5>
-    <h6 style='padding-top:30px;color: #4d4d4d;'>Made by <a href='https://prasannan.herokuapp.com/' target="_blank">Prasanna</a></h6>
-</div> 
-<div style='font-family:monospace;text-align:center;color:#4d4d4d;max-width:auto;height:50vh;'>
-    <h4 style='padding-top:20px;'>Click the button to</h4>
-    <form action='columnselector' method='POST' enctype = "multipart/form-data">
-        <div class="file-upload" style='padding-top:20px;'>
-            <input class="file-upload__input" type="file" name="basefile" id="basefile" onchange="form.submit()" accept='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'/>
-            <button class="file-upload__button" type="button">Select base file</button>
-            <span class="file-upload__label" style='padding-left:20px;'></span>
-          </div>
-       
-    </form>
+<div class="text-center mb-4">
+  <h1 class="h2 fw-bold">Who missed today's class?</h1>
+  <p class="text-secondary mb-0">Compare your class list with the BigBlueButton attendee list and get the absentees in seconds.</p>
 </div>
-<script>
-    function detectMob() {
-        if ( ( window.innerWidth <= 1000 ) && ( window.innerHeight <= 1000 ) ) {
-          
-          updateHTML('arrow1','An online <br> attendance helper for <br> bigbluebutton');
-          updateHTML('arrow2','Helps you to find the  <br> absentees from the list');
-        }
-        return ( ( window.innerWidth <= 1000 ) && ( window.innerHeight <= 1000 ) );
-      }
-      function updateHTML(elmId, value) {
-        var elem = document.getElementById(elmId);
-        if(typeof elem !== 'undefined' && elem !== null) {
-          elem.innerHTML = value;
-        }
-      }
-      
-    console.log(detectMob());
-</script>
+
+<div class="card p-4 mb-4">
+  <form action="{{ url_for('view.columns') }}" method="post" enctype="multipart/form-data" data-autosubmit>
+    <label class="form-label fw-semibold" for="basefile">1. Upload your class list</label>
+    <div class="dropzone" data-dropzone>
+      <div class="fs-1">📋</div>
+      <div class="fw-semibold">Click or drop a spreadsheet here</div>
+      <div class="text-secondary small">.xlsx or .csv with one student per row</div>
+      <div class="mt-2 small text-body" data-filename data-empty="No file selected">No file selected</div>
+      <input class="d-none" type="file" name="basefile" id="basefile" required
+             accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv">
+    </div>
+    <div class="text-end mt-3">
+      <button type="submit" class="btn btn-biscuit px-4">Continue →</button>
+    </div>
+  </form>
+</div>
+
+<h2 class="h6 text-uppercase text-secondary mb-3">How it works</h2>
+<div class="row g-3 howto">
+  <div class="col-md-4">
+    <div class="card p-3 h-100 text-center">
+      <img class="w-100 mb-2" src="{{ url_for('static', filename='download.jpg') }}" alt="Saving the user list in BigBlueButton">
+      <div class="small"><strong>Save the user list</strong> from BigBlueButton during class.</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 h-100 text-center">
+      <img class="w-100 mb-2" src="{{ url_for('static', filename='uploadbase.png') }}" alt="Uploading the class list">
+      <div class="small"><strong>Upload your class list</strong> and pick the name columns.</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 h-100 text-center">
+      <img class="w-100 mb-2" src="{{ url_for('static', filename='checkfile.png') }}" alt="Uploading the user list">
+      <div class="small"><strong>Upload the user list</strong> and get absentees, ready to copy or download.</div>
+    </div>
+  </div>
+</div>
 {% endblock %}

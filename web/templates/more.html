@@ -1,10 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Biscuit | More{% endblock %}
-
+{% block title %}About{% endblock %}
 {% block content %}
-<div class='container' style='font-family:consolas;padding-top:50px;width:auto;'>
-    <h3>This webapp is made for easing attendance in <a href='https://docs.bigbluebutton.org/'>bigbluebutton</a></h3>
-    <h4>Made by <a href='https://prasannan.herokuapp.com/'>Saturnv</a></h4>
-    <h5>Thanks for freepik for the logo</h5>
+<div class="card p-4 mt-4">
+  <h1 class="h4">About Biscuit</h1>
+  <p>Biscuit helps teachers take attendance in <a href="https://docs.bigbluebutton.org/" target="_blank" rel="noopener">BigBlueButton</a>
+     classes: it compares the saved user list with your class list and tells you who was absent.</p>
+  <ul>
+    <li>Names are matched ignoring case, spaces and punctuation, so “DEVI .P.T” matches “Devi P.T”.</li>
+    <li>Absentees with a near-identical attendee name are flagged with “maybe joined as…”.</li>
+    <li>Files are processed in memory and never saved on the server.</li>
+  </ul>
+  <p class="mb-0 small text-secondary">Logo by Freepik. Made by <a href="https://prasannan-robots.github.io" target="_blank" rel="noopener">Prasanna</a>.</p>
 </div>
 {% endblock %}

@@ -1,19 +1,63 @@
 {% extends "base.html" %}
-{% block title %}Biscuit | Answer{% endblock %}
+{% block title %}Results{% endblock %}
+{% block steps %}{% with current = 3 %}{% include "_steps.html" %}{% endwith %}{% endblock %}
 {% block content %}
-<div class='container' style='text-align:center;font-family:consolas;'>
-    <div style='padding-top:40px;overflow: auto;height:300px;'>
-    {% for i in aray %}
-    {{i}}<br>
-    {% endfor %}
+<div class="row g-3 mb-3">
+  <div class="col-4"><div class="stat bg-white shadow-sm"><div class="num">{{ result.total }}</div><div class="small text-secondary">On roll</div></div></div>
+  <div class="col-4"><div class="stat bg-success-subtle"><div class="num text-success">{{ result.present|length }}</div><div class="small text-secondary">Present</div></div></div>
+  <div class="col-4"><div class="stat bg-danger-subtle"><div class="num text-danger">{{ result.absent|length }}</div><div class="small text-secondary">Absent</div></div></div>
 </div>
-    <div style='padding-top:40px;'></div>
-    {{value}}
-    
-    <a href="/return-files/{{value}}" target="blank" ><button class='btn btn-default'>Download</button></a>
-    <div style='padding-top:50px;'>
-        Made by <a href='https://prasannan.herokuapp.com/'>Prasanna</a>
+{% if result.total %}
+<div class="progress mb-4" role="progressbar" aria-label="Attendance" style="height: .6rem">
+  <div class="progress-bar bg-success" style="width: {{ (100 * result.present|length / result.total)|round(1) }}%"></div>
+</div>
+{% endif %}
+
+<div class="card p-4 mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="h5 mb-0">Absent</h2>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary btn-sm" id="copy" type="button">Copy list</button>
+      <button class="btn btn-biscuit btn-sm" id="download" type="button">Download report</button>
     </div>
+  </div>
+  {% if result.absent %}
+    <ol class="mb-0">
+      {% for name in result.absent %}
+        <li>{{ name }}{% if result.maybe.get(name) %}
+          <span class="badge text-bg-warning fw-normal ms-1">maybe joined as “{{ result.maybe[name] }}”</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p class="mb-0 text-success">🎉 Everyone was present.</p>
+  {% endif %}
 </div>
-<div style='width:auto;height:fill;background-color:white;'></div>
+
+{% if result.unknown %}
+<details class="card p-4 mb-3">
+  <summary class="fw-semibold">Joined but not on the class list ({{ result.unknown|length }})</summary>
+  <p class="small text-secondary mt-2">Guests, teachers, or students who joined with a different name.</p>
+  <ul class="mb-0">{% for name in result.unknown %}<li>{{ name }}</li>{% endfor %}</ul>
+</details>
+{% endif %}
+
+<div class="text-center"><a class="btn btn-link text-secondary" href="{{ url_for('view.home') }}">Check another class</a></div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const report = {{ report|tojson }};
+  const absent = {{ result.absent|tojson }};
+  document.getElementById("download").addEventListener("click", () => {
+    const url = URL.createObjectURL(new Blob([report], { type: "text/plain" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: "attendance.txt" });
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+  document.getElementById("copy").addEventListener("click", async (e) => {
+    await navigator.clipboard.writeText(absent.join("\n"));
+    e.target.textContent = "Copied!";
+    setTimeout(() => (e.target.textContent = "Copy list"), 1500);
+  });
+</script>
 {% endblock %}
