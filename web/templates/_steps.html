@@ -1,0 +1,8 @@
+<div class="steps" aria-label="Progress">
+  {% for label in ["Class list", "Match", "Results"] %}
+    {% set n = loop.index %}
+    <div class="step {% if n == current %}active{% elif n < current %}done{% endif %}">
+      <span class="dot">{% if n < current %}✓{% else %}{{ n }}{% endif %}</span>{{ label }}
+    </div>
+  {% endfor %}
+</div>

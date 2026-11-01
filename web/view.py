@@ -1,143 +1,82 @@
-from flask import Blueprint, render_template, request, flash,redirect,url_for,session,send_file
-from werkzeug.utils import secure_filename
-import os
-import pandas as pd
-import glob
+import json
 
-view = Blueprint('view',__name__)
+from flask import Blueprint, render_template, request
 
-@view.route('/')
+from .attendance import (
+    RosterError,
+    compare,
+    guess_name_columns,
+    parse_attendees,
+    read_roster,
+    roster_names,
+)
+
+view = Blueprint("view", __name__)
+
+
+@view.get("/")
 def home():
-    session['check_arr'] = []
-    session['df_arr'] = []
-    session['answer_arr'] = []
-    session['base'] = []
-    files2 = glob.glob('web/temp/*')
-    for f2 in files2:
-        os.remove(f2)
-    files3 = glob.glob('web/basefile/*')
-    for f3 in files3:
-        os.remove(f3)
-    files4 = glob.glob('web/checkfile/*')
-    for f4 in files4:
-        os.remove(f4)
-    return render_template('home.html')
-
-@view.route('/columnselector', methods=['POST','GET'])
-def columnselector():
-    if request.method == 'POST':
-        base_file = request.files["basefile"]
-        basepath = os.path.dirname(__file__)
-        base_file_path = os.path.join(basepath, "basefile", secure_filename(base_file.filename))
-        base_file.save(base_file_path)
-        session['base_file_path'] = base_file_path
-        df = pd.read_excel(session['base_file_path'])
-        return render_template('basefilewanted.html', data=df.columns)
-    else:
-        return redirect(url_for('view.home'))
+    return render_template("home.html")
 
 
-@view.route('/check', methods=['POST','GET'])
-def check():
-    if request.method== 'POST':
-        df = pd.read_excel(session['base_file_path'])
-        column = request.form.getlist('column')
-        session['added_arr'] = column
-        base = []
-        for items in df['{}'.format(session['added_arr'][0])]:
-                try:
-                    math.floor(int(items))
-                except:
-                    pass
-                base.append(items)
-        for elements in session['added_arr'][1:]:
-                for no, things in enumerate(df['{}'.format(elements)]):
-                    try:
-                        things = math.floor(int(things))
-                    except:
-                        pass
-                    try:
-                        things = things.replace('nan', '')
-                    except:
-                        pass
-                    base[no] = str(base[no])+ ' ' +str(things)
-        session['base'] = base    
-        return render_template('check.html')
-    else:
-        return redirect(url_for('view.home'))
+@view.post("/columns")
+def columns():
+    upload = request.files.get("basefile")
+    if not upload or not upload.filename:
+        return render_template("home.html", error="Choose your class list first."), 400
+    try:
+        cols, rows = read_roster(upload.read(), upload.filename)
+    except RosterError as exc:
+        return render_template("home.html", error=str(exc)), 400
+    return render_template(
+        "basefilewanted.html",
+        columns=cols,
+        preview=rows[:3],
+        selected=guess_name_columns(cols),
+        row_count=len(rows),
+        # The roster rides along in the form instead of being stored server-side.
+        roster=json.dumps({"columns": cols, "rows": rows}),
+    )
 
 
-@view.route('/finder',methods=['POST','GET'])
-def finder():
-    if request.method == 'POST':
-        answer_arr = session['answer_arr']
-        check_file = request.files["checkfile"]
-        checkpath = os.path.dirname(__file__)
-        check_file_path = os.path.join(checkpath, "checkfile", secure_filename(check_file.filename))
-        check_file.save(check_file_path)
-        checking = open(check_file_path,'r')
-        check_arr = []
-        for things in open(check_file_path).readlines():
-            things = things.replace(' ', '').lower()
-            things = things.replace('locked', '')
-            things = things.replace('\n', '')
-            if len(things) <= 2:
-                pass
-            else:
-                check_arr.append(things)
-        session['check_arr'] = check_arr
-        base = session['base']
-        df_arr = []
-        for aw in base:
-            aw = aw.replace(' ', '')
-            df_arr.append(aw.lower())
-    
+def _load_roster(raw: str):
+    data = json.loads(raw)
+    cols, rows = data["columns"], data["rows"]
+    if not (isinstance(cols, list) and isinstance(rows, list)):
+        raise ValueError
+    return cols, [[str(c) for c in row] for row in rows if isinstance(row, list)]
 
-        for no, elements in enumerate(df_arr):
-            if elements in check_arr:
-                pass
-            else:
-                answer_arr.append(base[no])
-        wi = open('web/temp/attendance.txt', 'a')
-        for elemen in answer_arr:
-            wi.write(elemen)
-            wi.write('\n')
-        wi.write('\n')
-        wi.write('\n')
-        wi.write('Number of students on roll: {}'.format(len(base)))
-        wi.write('\n')
-        wi.write('Number of students present: {}'.format(len(base)-len(answer_arr)))        
-        wi.write('\n')
-        wi.write('Number of students absent: {}'.format(len(answer_arr)))
-        wi.close()
-        answer_arr.append('Number of students on roll: {}'.format(len(base)))
-        answer_arr.append('Number of students present: {}'.format(len(base)-len(answer_arr)))
-        answer_arr.append('Number of students absent: {}'.format(len(answer_arr)))
-        
-        files = glob.glob('web/basefile/*')
-        for f in files:
-            os.remove(f)
-        files2 = glob.glob('web/checkfile/*')
-        for f2 in files2:
-            os.remove(f2)
-        return redirect(url_for('view.answer', filename='attendance.txt'))
-    else:
-        return redirect(url_for('view.home'))
 
-@view.route('/return-files/<filename>')
-def return_files_tut(filename):
-    basepath = os.path.dirname(__file__)
-    file_path = basepath + '/temp/' +filename
-    return send_file(file_path, as_attachment=True, attachment_filename='')
+@view.post("/result")
+def result():
+    try:
+        cols, rows = _load_roster(request.form.get("roster", ""))
+    except (ValueError, KeyError, TypeError):
+        return render_template("home.html", error="Please start again by uploading the class list."), 400
 
-@view.route('/answer/<filename>')
-def answer(filename):
-    asd = []
-    filse = open('web/temp/attendance.txt', 'r')
-    for i in filse:
-        asd.append(i)
-    return render_template('answer.html',value=filename, aray=asd)
+    picked = sorted({int(c) for c in request.form.getlist("column") if c.isdigit() and int(c) < len(cols)})
+    attendee_file = request.files.get("checkfile")
+    error = None
+    if not picked:
+        error = "Pick at least one column that contains student names."
+    elif not attendee_file or not attendee_file.filename:
+        error = "Choose the user list you saved from BigBlueButton."
+    if error:
+        return render_template(
+            "basefilewanted.html", columns=cols, preview=rows[:3], selected=picked,
+            row_count=len(rows), roster=request.form["roster"], error=error,
+        ), 400
 
-@view.route('/more')
+    attendees = parse_attendees(attendee_file.read().decode("utf-8", errors="replace"))
+    outcome = compare(roster_names(rows, picked), attendees)
+    return render_template("answer.html", result=outcome, report=outcome.as_text())
+
+
+@view.get("/more")
 def more():
-    return render_template('more.html')
+    return render_template("more.html")
+
+
+@view.app_errorhandler(413)
+def too_large(_error):
+    return render_template("home.html", error="That file is too large (max 8 MB)."), 413
